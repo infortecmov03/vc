@@ -34,7 +34,6 @@ async function getProduct(id: string): Promise<Product | null> {
   return placeholderProduct || null;
 }
 
-// @ts-expect-error Next.js type override fix
 export default async function ProductDetailPage({ params }: { params: { id: string } }) {
   const product = await getProduct(params.id);
 
@@ -116,7 +115,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
                               data-ai-hint={placeholderImages.avatar.hint}
                             />
                            <div>
-                              <p className="text-sm italic">"{proof.text}"</p>
+                              <p className="text-sm italic">\"{proof.text}\"</p>
                               <p className="text-xs text-muted-foreground mt-1">- {proof.author}</p>
                            </div>
                         </div>

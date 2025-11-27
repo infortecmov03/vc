@@ -17,11 +17,11 @@ import { AddToCartButton } from '@/components/cart/AddToCartButton';
 import { placeholderProducts } from '@/lib/placeholder-products';
 import placeholderImages from '@/lib/placeholder-images.json';
 
-interface PageProps {
-  params: {
-    id: string;
-  };
-}
+// Definindo um tipo mais explícito para as props da página
+type PageProps = {
+  params: { id: string };
+  searchParams: { [key: string]: string | string[] | undefined };
+};
 
 async function getProduct(id: string): Promise<Product | null> {
   try {

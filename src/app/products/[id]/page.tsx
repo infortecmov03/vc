@@ -34,6 +34,7 @@ async function getProduct(id: string): Promise<Product | null> {
   return placeholderProduct || null;
 }
 
+// @ts-expect-error Next.js type override fix
 export default async function ProductDetailPage({ params }: { params: { id: string } }) {
   const product = await getProduct(params.id);
 

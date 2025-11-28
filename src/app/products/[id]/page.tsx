@@ -3,7 +3,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, notFound } from 'next/navigation';
 import Image from 'next/image';
-import { products } from '@/lib/products';
 import { Product } from '@/lib/types';
 import { Header } from '@/components/header';
 import { Button } from '@/components/ui/button';
@@ -13,6 +12,10 @@ import { ShoppingCart } from 'lucide-react';
 import { Recommendations } from '@/components/recommendations';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { useFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 export default function ProductDetailPage() {
@@ -21,26 +24,45 @@ export default function ProductDetailPage() {
   const { addToCart, cartItems } = useCart();
   const id = typeof params.id === 'string' ? params.id : '';
 
+  const { firestore } = useFirebase();
+
+  const productsQuery = useMemo(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'products'));
+  }, [firestore]);
+
+  const { data: products, isLoading: areProductsLoading } = useCollection<Product>(productsQuery);
+
   // Find all related product variations for "Quadros"
   const productFamily = useMemo(() => {
+    if (!products) return [];
     if (id === '1') {
       return products.filter(p => p.id.startsWith('1-'));
     }
     const singleProduct = products.find(p => p.id === id);
     return singleProduct ? [singleProduct] : [];
-  }, [id]);
+  }, [id, products]);
 
-  const baseProduct = productFamily[0];
+  const baseProduct = useMemo(() => {
+    if (!products) return undefined;
+    const product = productFamily[0];
+    if (product) return product;
+
+    // For single products not in a family
+    return products.find(p => p.id === id);
+  }, [productFamily, products, id]);
 
   const [selectedVariant, setSelectedVariant] = useState<Product | undefined>(baseProduct);
   
   useEffect(() => {
-    setSelectedVariant(baseProduct);
-  }, [baseProduct]);
+    if (!selectedVariant && baseProduct) {
+        setSelectedVariant(baseProduct);
+    }
+  }, [baseProduct, selectedVariant]);
 
 
   useEffect(() => {
-    if (selectedVariant) {
+    if (selectedVariant && products) {
       const storedHistoryJSON = localStorage.getItem('browsingHistory');
       let history: Product[] = storedHistoryJSON ? JSON.parse(storedHistoryJSON) : [];
       
@@ -57,7 +79,29 @@ export default function ProductDetailPage() {
         localStorage.setItem('browsingHistory', JSON.stringify(history));
       }
     }
-  }, [selectedVariant, productFamily]);
+  }, [selectedVariant, productFamily, products]);
+
+  if (areProductsLoading) {
+    return (
+        <div className="flex min-h-screen w-full flex-col">
+            <Header />
+            <main className="flex-1">
+                <div className="container py-8 md:py-12">
+                    <div className="grid gap-8 md:grid-cols-2">
+                        <Skeleton className="aspect-square w-full rounded-lg" />
+                        <div className="space-y-6">
+                            <Skeleton className="h-10 w-3/4" />
+                            <Skeleton className="h-5 w-full" />
+                            <Skeleton className="h-5 w-4/5" />
+                            <Skeleton className="h-10 w-32" />
+                            <Skeleton className="h-12 w-48" />
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    );
+  }
 
   if (!baseProduct) {
     return notFound();

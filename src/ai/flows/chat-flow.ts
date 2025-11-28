@@ -10,8 +10,17 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { products as allProductsStore } from '@/lib/products';
 import { ProductSchema } from './product-schemas';
+import { getFirestore } from 'firebase-admin/firestore';
+import { initializeApp, getApps, App } from 'firebase-admin/app';
+
+let app: App;
+if (!getApps().length) {
+  app = initializeApp();
+} else {
+  app = getApps()[0];
+}
+const firestore = getFirestore(app);
 
 const ChatMessageSchema = z.object({
   role: z.enum(['user', 'model']),
@@ -36,33 +45,37 @@ const getAvailableProducts = ai.defineTool({
   inputSchema: z.object({}),
   outputSchema: z.array(ProductSchema),
 }, async () => {
+    const productsSnapshot = await firestore.collection('products').get();
+    const products: z.infer<typeof ProductSchema>[] = productsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: data.name,
+        description: data.description,
+        price: data.price,
+        imageUrl: data.imageUrl,
+        category: data.category,
+        stock: data.stock,
+      };
+    });
+
     // We create a representative product for the "Quadros" family
-    const representativeQuadro: z.infer<typeof ProductSchema> = {
-        id: '1',
-        name: 'Quadros Artísticos',
-        description: 'Quadros artísticos com mensagens inspiradoras, perfeitos para decorar qualquer ambiente.',
-        price: 1000,
-        imageUrl: 'https://i.postimg.cc/ht51fqKK/2025-10-26-22-26-45.jpg',
-        category: 'Quadros Artisticos',
-        stock: 5,
-    };
-
-    const otherProducts = allProductsStore.filter(p => !p.id.startsWith('1-'));
-
-    const storeProducts: z.infer<typeof ProductSchema>[] = [
-        representativeQuadro,
-        ...otherProducts.map(p => ({
-            id: p.id,
-            name: p.name,
-            description: p.description,
-            price: p.price,
-            imageUrl: p.imageUrl,
-            category: p.category,
-            stock: p.stock,
-        }))
-    ];
-
-    return storeProducts;
+    const quadros = products.filter(p => p.category === 'Quadros Artisticos');
+    if (quadros.length > 0) {
+        const representativeQuadro: z.infer<typeof ProductSchema> = {
+            id: '1',
+            name: 'Quadros Artísticos',
+            description: 'Quadros artísticos com mensagens inspiradoras, perfeitos para decorar qualquer ambiente.',
+            price: 1000,
+            imageUrl: 'https://i.postimg.cc/ht51fqKK/2025-10-26-22-26-45.jpg',
+            category: 'Quadros Artisticos',
+            stock: 5,
+        };
+        const otherProducts = products.filter(p => p.category !== 'Quadros Artisticos');
+        return [representativeQuadro, ...otherProducts];
+    }
+    
+    return products;
 });
 
 const chatPrompt = ai.definePrompt({

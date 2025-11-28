@@ -8,17 +8,26 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { useSearchParams } from 'next/navigation';
+import { useFirebase } from '@/firebase';
+import { collection, query } from 'firebase/firestore';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { Skeleton } from './ui/skeleton';
 
-interface ProductShowcaseProps {
-  allProducts: Product[];
-}
-
-export function ProductShowcase({ allProducts }: ProductShowcaseProps) {
+export function ProductShowcase() {
   const searchParams = useSearchParams();
   const categoryParam = searchParams.get('category');
   
   const [category, setCategory] = useState('all');
   const [priceRange, setPriceRange] = useState([0, 5000]);
+
+  const { firestore } = useFirebase();
+
+  const productsQuery = useMemo(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'products'));
+  }, [firestore]);
+
+  const { data: allProducts, isLoading: areProductsLoading } = useCollection<Product>(productsQuery);
   
   useEffect(() => {
     if (categoryParam) {
@@ -26,9 +35,13 @@ export function ProductShowcase({ allProducts }: ProductShowcaseProps) {
     }
   }, [categoryParam]);
   
-  const categories = useMemo(() => ['all', ...Array.from(new Set(allProducts.map(p => p.category)))], [allProducts]);
+  const categories = useMemo(() => {
+      if (!allProducts) return ['all'];
+      return ['all', ...Array.from(new Set(allProducts.map(p => p.category)))]
+    }, [allProducts]);
   
   const filteredProducts = useMemo(() => {
+    if (!allProducts) return [];
     return allProducts.filter(product => {
         const categoryMatch = category === 'all' || product.category === category;
         const priceMatch = product.price >= priceRange[0] && product.price <= priceRange[1];
@@ -37,6 +50,7 @@ export function ProductShowcase({ allProducts }: ProductShowcaseProps) {
   }, [allProducts, category, priceRange]);
   
   const productsByCategory = useMemo(() => {
+    if (!filteredProducts) return {};
     // For "Quadros Artisticos", show only one card that links to the family page.
     const quadros = filteredProducts.find(p => p.category === 'Quadros Artisticos');
     const otherProducts = filteredProducts.filter(p => p.category !== 'Quadros Artisticos');
@@ -53,7 +67,6 @@ export function ProductShowcase({ allProducts }: ProductShowcaseProps) {
             category: 'Quadros Artisticos',
             stock: 5,
             imageHint: 'quadro artistico',
-            variations: [],
         };
         displayProducts = [representativeQuadro, ...otherProducts];
     }
@@ -67,6 +80,27 @@ export function ProductShowcase({ allProducts }: ProductShowcaseProps) {
         return acc;
     }, {} as Record<string, Product[]>);
   }, [filteredProducts, category]);
+
+  const ShowcaseSkeleton = () => (
+    <div className="space-y-10">
+        <div>
+            <Skeleton className="h-8 w-48 mb-4" />
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                <Skeleton className="h-96 w-full" />
+                <Skeleton className="h-96 w-full" />
+                <Skeleton className="h-96 w-full" />
+            </div>
+        </div>
+         <div>
+            <Skeleton className="h-8 w-48 mb-4" />
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                <Skeleton className="h-96 w-full" />
+                <Skeleton className="h-96 w-full" />
+                <Skeleton className="h-96 w-full" />
+            </div>
+        </div>
+    </div>
+  );
 
   return (
     <div className="space-y-12">
@@ -104,7 +138,8 @@ export function ProductShowcase({ allProducts }: ProductShowcaseProps) {
         </div>
 
         <div className="space-y-10">
-            {Object.keys(productsByCategory).length > 0 ? (
+            {areProductsLoading ? <ShowcaseSkeleton /> :
+            Object.keys(productsByCategory).length > 0 ? (
                 Object.entries(productsByCategory).map(([cat, products]) => (
                     <section key={cat}>
                         <h3 className="mb-4 text-2xl font-semibold">{cat}</h3>

@@ -1,6 +1,5 @@
 import { Header } from '@/components/header';
 import { ProductShowcase } from '@/components/product-showcase';
-import { products } from '@/lib/products';
 
 export default function Home() {
   return (
@@ -8,7 +7,7 @@ export default function Home() {
       <Header />
       <main className="flex-1">
         <div className="container py-8 md:py-12">
-          <ProductShowcase allProducts={products} />
+          <ProductShowcase />
         </div>
       </main>
       <footer className="border-t py-6 md:px-8 md:py-0">

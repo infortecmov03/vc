@@ -7,9 +7,8 @@ import { CartSheet } from '@/components/cart-sheet';
 import { useState, useMemo } from 'react';
 import { useCart } from '@/contexts/cart-context';
 import { SearchDialog } from './search-dialog';
-import { useUser } from '@/firebase';
+import { useUser, useFirebase } from '@/firebase';
 import Link from 'next/link';
-import { products } from '@/lib/products';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,16 +20,28 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { collection } from 'firebase/firestore';
+import { Product } from '@/lib/types';
 
 
 export function Header() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const { totalItems } = useCart();
   const { user, isUserLoading } = useUser();
+  const { firestore } = useFirebase();
+
+  const productsQuery = useMemo(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'products');
+  }, [firestore]);
+
+  const { data: products } = useCollection<Product>(productsQuery);
 
   const categories = useMemo(() => {
+    if (!products) return [];
     return [...new Set(products.map(p => p.category))];
-  }, []);
+  }, [products]);
 
   return (
     <>

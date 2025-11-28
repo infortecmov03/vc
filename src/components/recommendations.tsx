@@ -9,8 +9,9 @@ import { ProductList } from './product-list';
 import type { Product } from '@/lib/types';
 import { recommendProducts } from '@/ai/flows/product-recommendations';
 import { useToast } from '@/hooks/use-toast';
-import { products as allProductsStore } from '@/lib/products';
 import { ProductSchema } from '@/ai/flows/product-schemas';
+import { useCollection, useFirebase } from '@/firebase';
+import { collection, getDocs } from 'firebase/firestore';
 
 export function Recommendations() {
   const [recommendations, setRecommendations] = useState<Product[]>([]);
@@ -18,6 +19,7 @@ export function Recommendations() {
   const [browsingHistory, setBrowsingHistory] = useState<Product[]>([]);
   const { toast } = useToast();
   const pathname = usePathname();
+  const { firestore } = useFirebase();
 
   useEffect(() => {
     const storedHistory = localStorage.getItem('browsingHistory');
@@ -28,7 +30,7 @@ export function Recommendations() {
 
   useEffect(() => {
     const handleGetRecommendations = async () => {
-      if (browsingHistory.length === 0) {
+      if (browsingHistory.length === 0 || !firestore) {
         return;
       }
   
@@ -49,12 +51,27 @@ export function Recommendations() {
           })),
         });
         
+        const productsRef = collection(firestore, 'products');
+        const productsSnapshot = await getDocs(productsRef);
+        const allProductsStore = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Product[];
+        
         const historyIds = new Set(browsingHistory.map(p => p.id));
         const mappedResults: Product[] = result
           .map(rec => {
             // Find the most representative product from the store, especially for variation families
             if (rec.id.startsWith('1-')) {
-                return allProductsStore.find(p => p.id === '1');
+                // Find the generic "Quadro Artístico" product
+                 const representativeQuadro: Product = {
+                    id: '1',
+                    name: 'Quadros Artísticos',
+                    description: 'Quadros artísticos com mensagens inspiradoras, perfeitos para decorar qualquer ambiente.',
+                    price: 1000, // Base price
+                    imageUrl: 'https://i.postimg.cc/ht51fqKK/2025-10-26-22-26-45.jpg',
+                    category: 'Quadros Artisticos',
+                    stock: 5,
+                    imageHint: 'quadro artistico',
+                };
+                return representativeQuadro;
             }
             return allProductsStore.find(p => p.id === rec.id);
           })
@@ -84,7 +101,7 @@ export function Recommendations() {
     if(browsingHistory.length > 0){
         handleGetRecommendations();
     }
-  }, [browsingHistory, toast]);
+  }, [browsingHistory, toast, firestore]);
 
   if (pathname.startsWith('/products/')) {
     return null;

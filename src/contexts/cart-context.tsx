@@ -1,8 +1,9 @@
 'use client';
 
-import type { Product, ProductVariation } from '@/lib/types';
-import { products as allProducts } from '@/lib/products';
+import type { Product } from '@/lib/types';
 import { createContext, useContext, useState, ReactNode, useMemo, useEffect } from 'react';
+import { useFirebase } from '@/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 interface CartItem extends Product {
   quantity: number;
@@ -10,7 +11,7 @@ interface CartItem extends Product {
 
 interface CartContextType {
   cartItems: CartItem[];
-  addToCart: (product: Product | ProductVariation, quantity?: number) => boolean;
+  addToCart: (product: Product, quantity?: number) => boolean;
   removeFromCart: (productId: string) => void;
   clearCart: () => void;
   totalPrice: number;
@@ -21,6 +22,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const { firestore } = useFirebase();
 
   useEffect(() => {
     try {
@@ -38,7 +40,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('cartItems', JSON.stringify(cartItems));
   }, [cartItems]);
 
-  const addToCart = (product: Product | ProductVariation, quantity = 1): boolean => {
+  const addToCart = (product: Product, quantity = 1): boolean => {
     let success = false;
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.id === product.id);
@@ -56,28 +58,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           );
         }
         
-        // Find the full product details from the main products list
-        const productInStore = allProducts.find(p => p.id === product.id);
-
-        if (productInStore) {
-            return [...prevItems, { ...productInStore, quantity }];
-        }
-        
-        // Fallback for items not directly in the main list (like variations)
-        const productToAdd: Product = {
-            id: product.id,
-            name: product.name,
-            price: product.price,
-            stock: product.stock,
-            imageUrl: product.imageUrl,
-            imageHint: product.imageHint,
-            // Try to find parent product for more details
-            description: allProducts.find(p => p.variations?.some(v => v.id === product.id))?.description || '',
-            category: allProducts.find(p => p.variations?.some(v => v.id === product.id))?.category || allProducts.find(p => p.id === product.id)?.category || '',
-            variations: []
-        };
-        
-        return [...prevItems, { ...productToAdd, quantity }];
+        return [...prevItems, { ...product, quantity }];
       }
       
       success = false;

@@ -11,6 +11,16 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { ProductSchema } from './product-schemas';
+import { getFirestore } from 'firebase-admin/firestore';
+import { initializeApp, getApps, App } from 'firebase-admin/app';
+
+let app: App;
+if (!getApps().length) {
+  app = initializeApp();
+} else {
+  app = getApps()[0];
+}
+const firestore = getFirestore(app);
 
 
 const RecommendProductsInputSchema = z.object({
@@ -34,39 +44,24 @@ const getAvailableProducts = ai.defineTool({
   inputSchema: z.object({category: z.string().optional().describe('Filter products by category')}),
   outputSchema: z.array(ProductSchema),
 }, async (input) => {
-  // TODO: Replace with actual implementation to fetch products from the database.
-  // This is dummy data for demonstration purposes.
-  const products: z.infer<typeof ProductSchema>[] = [
-    {
-      id: '1',
-      name: 'Abstract Art Canvas',
-      description: 'A beautiful abstract art piece on canvas.',
-      price: 3200.00,
-      imageUrl: '/images/abstract_art.jpg',
-      category: 'Quadros Artisticos',
-      stock: 10,
-    },
-    {
-      id: '2',
-      name: 'Smart Tag Rastreador',
-      description: 'A smart tag to track your belongings.',
-      price: 1600.00,
-      imageUrl: '/images/smart_tag.jpg',
-      category: 'Smart Tag Rastreador',
-      stock: 20,
-    },
-    {
-      id: '3',
-      name: 'Modern Art Print',
-      description: 'A modern art print for your home decor.',
-      price: 2500.00,
-      imageUrl: '/images/modern_art.jpg',
-      category: 'Quadros Artisticos',
-      stock: 5,
-    },
-  ];
-
-  return products.filter(product => !input.category || product.category === input.category);
+  let query: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> = firestore.collection('products');
+  if (input.category) {
+    query = query.where('category', '==', input.category);
+  }
+  const productsSnapshot = await query.get();
+  const products: z.infer<typeof ProductSchema>[] = productsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: data.name,
+        description: data.description,
+        price: data.price,
+        imageUrl: data.imageUrl,
+        category: data.category,
+        stock: data.stock,
+      };
+    });
+  return products;
 });
 
 const recommendProductsPrompt = ai.definePrompt({

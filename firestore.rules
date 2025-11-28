@@ -81,14 +81,8 @@ service cloud.firestore {
     /**
      * Checks if a user is a participant in a chat room based on the chat ID.
      * The chatId is expected to be in the format: {userId}_{sellerId}.
-     * Allows access to a specific 'anonymous-chat' room for unauthenticated users.
      */
     function isChatParticipant(chatId) {
-      // Allow access for unauthenticated users to the public anonymous chat room
-      if (chatId == 'anonymous-chat') {
-        return true;
-      }
-      // For all other chats, enforce authentication and participation
       let parts = chatId.split('_');
       return isSignedIn() && (request.auth.uid == parts[0] || request.auth.uid == parts[1]);
     }
@@ -200,27 +194,27 @@ service cloud.firestore {
     }
 
     /**
-     * @description Controls access to chat messages. Access is restricted to chat participants.
-     * @path /chats/{chatId}/messages/{messageId}
-     * @allow (create) The buyer or seller in the chat sending a new message.
-     * @deny (get) A third-party user trying to read messages in a private conversation.
-     * @principle Enforces strict conversation isolation using path-based authorization.
+     * @description Public chat for anonymous users. Anyone can read and write.
+     * @path /chats/anonymous-chat/messages/{messageId}
      */
-    match /chats/{chatId}/messages/{messageId} {
-      allow get, list: if isChatParticipant(chatId);
-      allow create: if (isChatParticipant(chatId) &&
-                        // Allow anonymous users to write ONLY to the anonymous chat
-                        (chatId == 'anonymous-chat' && request.resource.data.userId == 'anonymous')
-                      ) ||
-                      // Or allow logged-in users to write to their own chats
-                      (isSignedIn() &&
-                        request.resource.data.senderType != 'ai' && // Clients cannot send messages as the AI.
-                        ((request.resource.data.senderType == 'user' && isOwner(request.resource.data.userId)) || 
-                         (request.resource.data.senderType == 'seller' && isSeller(request.resource.data.sellerId)))
-                      );
+    match /chats/anonymous-chat/messages/{messageId} {
+      allow read, create: if true;
       // Updates and deletes are disallowed for message history integrity.
       allow update, delete: if false;
     }
 
+    /**
+     * @description Controls access to private chat messages. Access is restricted to chat participants.
+     * @path /chats/{chatId}/messages/{messageId}
+     */
+    match /chats/{chatId}/messages/{messageId} {
+      allow get, list: if isChatParticipant(chatId);
+      allow create: if isChatParticipant(chatId) &&
+                        request.resource.data.senderType != 'ai' && // Clients cannot send messages as the AI.
+                        ((request.resource.data.senderType == 'user' && isOwner(request.resource.data.userId)) ||
+                         (request.resource.data.senderType == 'seller' && isSeller(request.resource.data.sellerId)));
+      // Updates and deletes are disallowed for message history integrity.
+      allow update, delete: if false;
+    }
   }
 }

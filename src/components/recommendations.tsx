@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2, Wand2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
@@ -49,12 +49,26 @@ export function Recommendations() {
           })),
         });
         
-        const mappedResults: Product[] = result.map(rec => {
-          const productFromStore = allProductsStore.find(p => p.id === rec.id);
-          return productFromStore || { ...rec, imageHint: '' };
-        }).filter(p => p && !browsingHistory.some(hist => hist.id === p.id)).slice(0, 3) as Product[];
+        const historyIds = new Set(browsingHistory.map(p => p.id));
+        const mappedResults: Product[] = result
+          .map(rec => {
+            // Find the most representative product from the store, especially for variation families
+            if (rec.id.startsWith('1-')) {
+                return allProductsStore.find(p => p.id === '1');
+            }
+            return allProductsStore.find(p => p.id === rec.id);
+          })
+          .filter((p): p is Product => 
+            !!p && 
+            !historyIds.has(p.id) &&
+            (p.id !== '1' || !browsingHistory.some(h => h.id.startsWith('1-')))
+          )
+          .slice(0, 3);
+          
+        // Remove duplicates (e.g., if AI recommends multiple variations of the same base product)
+        const uniqueResults = Array.from(new Map(mappedResults.map(p => [p.id, p])).values());
   
-        setRecommendations(mappedResults);
+        setRecommendations(uniqueResults);
       } catch (error) {
         console.error(error);
         toast({

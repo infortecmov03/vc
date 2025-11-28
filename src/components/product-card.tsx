@@ -17,6 +17,8 @@ export function ProductCard({ product }: ProductCardProps) {
   const { addToCart, cartItems } = useCart();
   const { toast } = useToast();
 
+  const isVariationFamily = product.id === '1';
+
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -37,8 +39,7 @@ export function ProductCard({ product }: ProductCardProps) {
   const cartItem = cartItems.find(item => item.id === product.id);
   const stock = product.stock - (cartItem?.quantity || 0);
   
-  // Use a different link for products with variations
-  const productLink = product.id.startsWith('1-') ? `/products/1` : `/products/${product.id}`;
+  const productLink = isVariationFamily ? `/products/1` : `/products/${product.id}`;
 
 
   return (
@@ -61,16 +62,24 @@ export function ProductCard({ product }: ProductCardProps) {
         <CardContent className="flex-grow">
             <div className="flex items-center justify-between">
             <p className="text-2xl font-bold text-primary">MT{product.price.toFixed(2)}</p>
-            <p className="text-sm text-muted-foreground">
-                {stock > 0 ? `${stock} em estoque` : 'Fora de estoque'}
-            </p>
+             {!isVariationFamily && (
+                <p className="text-sm text-muted-foreground">
+                    {stock > 0 ? `${stock} em estoque` : 'Fora de estoque'}
+                </p>
+             )}
             </div>
         </CardContent>
         <CardFooter>
-            <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" onClick={handleAddToCart} disabled={stock === 0}>
-            <ShoppingCart className="mr-2 h-4 w-4" />
-            Adicionar ao Carrinho
-            </Button>
+            {isVariationFamily ? (
+                 <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90" asChild>
+                    <div className='text-center'>Ver opções</div>
+                 </Button>
+            ) : (
+                <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" onClick={handleAddToCart} disabled={stock === 0}>
+                    <ShoppingCart className="mr-2 h-4 w-4" />
+                    Adicionar ao Carrinho
+                </Button>
+            )}
         </CardFooter>
         </Card>
     </Link>

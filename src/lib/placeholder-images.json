@@ -1,3 +1,22 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "1",
+      "description": "Abstract Art Canvas",
+      "imageUrl": "https://images.unsplash.com/photo-1622542796254-5b9c46ab0d2f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxhYnN0cmFjdCUyMGFydHxlbnwwfHx8fDE3NjQzMjY2OTB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "abstract art"
+    },
+    {
+      "id": "2",
+      "description": "Smart Tag Rastreador",
+      "imageUrl": "https://images.unsplash.com/photo-1583047960442-1e3e6d50ab02?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxzbWFydCUyMHRhZ3xlbnwwfHx8fDE3NjQzMzM4Mzh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "smart tag"
+    },
+    {
+      "id": "3",
+      "description": "Modern Art Print",
+      "imageUrl": "https://images.unsplash.com/photo-1663258682741-784f7a6c872f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxtb2Rlcm4lMjBwcmludHxlbnwwfHx8fDE3NjQzMzM4Mzh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "modern print"
+    }
+  ]
 }

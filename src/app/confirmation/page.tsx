@@ -12,9 +12,9 @@ export default function ConfirmationPage() {
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
               <CheckCircle className="h-10 w-10 text-primary" />
             </div>
-            <CardTitle className="mt-4 text-2xl">Pedido Confirmado!</CardTitle>
+            <CardTitle className="mt-4 text-2xl">Compra Efetuada com Sucesso!</CardTitle>
             <CardDescription>
-              Obrigado pela sua compra. Seu pedido foi recebido e está sendo processado.
+              A equipa da Bazar Moçambique agradece a sua preferência! Já estamos a preparar o seu pedido com todo o carinho.
             </CardDescription>
           </CardHeader>
           <CardContent>

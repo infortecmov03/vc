@@ -1,20 +1,30 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { Product } from '@/lib/types';
 import { ProductList } from './product-list';
 import { Recommendations } from './recommendations';
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { useSearchParams } from 'next/navigation';
 
 interface ProductShowcaseProps {
   allProducts: Product[];
 }
 
 export function ProductShowcase({ allProducts }: ProductShowcaseProps) {
+  const searchParams = useSearchParams();
+  const categoryParam = searchParams.get('category');
+  
   const [category, setCategory] = useState('all');
   const [priceRange, setPriceRange] = useState([0, 5000]);
+  
+  useEffect(() => {
+    if (categoryParam) {
+      setCategory(categoryParam);
+    }
+  }, [categoryParam]);
   
   const categories = useMemo(() => ['all', ...Array.from(new Set(allProducts.map(p => p.category)))], [allProducts]);
   

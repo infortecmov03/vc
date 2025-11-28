@@ -11,9 +11,9 @@ import { Input } from '@/components/ui/input';
 import Link from 'next/link';
 import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDocs, collection, query, where } from 'firebase/firestore';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome deve ter pelo menos 2 caracteres.' }),
@@ -21,11 +21,23 @@ const formSchema = z.object({
   password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }),
 });
 
+// Helper to generate a random string
+const generateReferralCode = (length = 8) => {
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return result;
+};
+
+
 export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const auth = useAuth();
   const firestore = useFirestore();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -52,6 +64,29 @@ export default function SignupPage() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
+      
+      const referralCode = searchParams.get('ref');
+      let referredBy = null;
+
+      if (referralCode) {
+        const usersRef = collection(firestore, 'users');
+        const q = query(usersRef, where('referralCode', '==', referralCode));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+            const referrerDoc = querySnapshot.docs[0];
+            // Anti-fraud: check if the new user's email is the same as the referrer's
+            if (referrerDoc.id !== user.uid) {
+               referredBy = referrerDoc.id;
+            } else {
+                toast({
+                    variant: "destructive",
+                    title: "Convite inválido",
+                    description: "Você não pode usar seu próprio link de convite.",
+                });
+            }
+        }
+      }
 
       // Create user document in Firestore
       const userRef = doc(firestore, 'users', user.uid);
@@ -60,6 +95,8 @@ export default function SignupPage() {
         name: values.name,
         email: values.email,
         createdAt: serverTimestamp(),
+        referralCode: generateReferralCode(),
+        referredBy: referredBy,
       });
 
       toast({

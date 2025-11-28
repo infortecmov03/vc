@@ -77,6 +77,14 @@
         "locationLongitude": {
           "type": "number",
           "description": "Longitude of the user's location."
+        },
+        "referralCode": {
+          "type": "string",
+          "description": "A unique code for this user to refer others."
+        },
+        "referredBy": {
+          "type": "string",
+          "description": "The ID of the user who referred this user."
         }
       },
       "required": [

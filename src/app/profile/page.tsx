@@ -3,7 +3,7 @@
 import { useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { doc, Timestamp, collection, query, where } from 'firebase/firestore';
+import { doc, Timestamp, collection, query, where, getDoc } from 'firebase/firestore';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { Header } from '@/components/header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,19 +14,28 @@ import { ptBR } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OrderHistory } from '@/components/order-history';
 import { Order } from '@/lib/types';
+import { Input } from '@/components/ui/input';
+import { Copy } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { getAuth } from 'firebase/auth';
 
 
 interface UserProfile {
+  id: string;
   name: string;
   email: string;
   createdAt: Timestamp;
+  referralCode?: string;
 }
 
 export default function ProfilePage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
+  const { toast } = useToast();
   const [accountAge, setAccountAge] = useState('');
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -45,8 +54,21 @@ export default function ProfilePage() {
     return query(collection(firestore, 'orders'), where('userId', '==', user.uid));
   }, [firestore, user]);
 
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userRef);
   const { data: orders, isLoading: areOrdersLoading } = useCollection<Order>(ordersQuery);
+
+  useEffect(() => {
+    async function fetchUserProfile() {
+        if (userRef) {
+            setIsProfileLoading(true);
+            const docSnap = await getDoc(userRef);
+            if (docSnap.exists()) {
+                setUserProfile(docSnap.data() as UserProfile);
+            }
+            setIsProfileLoading(false);
+        }
+    }
+    fetchUserProfile();
+  }, [userRef]);
 
   useEffect(() => {
     if (userProfile?.createdAt) {
@@ -54,10 +76,25 @@ export default function ProfilePage() {
       setAccountAge(formatDistanceToNow(date, { addSuffix: true, locale: ptBR }));
     }
   }, [userProfile]);
+  
+  const referralLink = useMemo(() => {
+    if (typeof window !== 'undefined' && userProfile?.referralCode) {
+      return `${window.location.origin}/signup?ref=${userProfile.referralCode}`;
+    }
+    return '';
+  }, [userProfile?.referralCode]);
+
+  const handleCopyToClipboard = () => {
+    navigator.clipboard.writeText(referralLink);
+    toast({
+      title: 'Link copiado!',
+      description: 'Seu link de convite foi copiado para a área de transferência.',
+    });
+  };
 
   const handleLogout = async () => {
-    if (!firestore || !user) return;
-    await signOut(getAuth());
+    const auth = getAuth();
+    await signOut(auth);
     router.push('/');
   };
 
@@ -68,7 +105,7 @@ export default function ProfilePage() {
       <Header />
       <main className="flex-1 bg-muted/40">
         <div className="container grid gap-8 py-8 md:grid-cols-3 md:py-12">
-          <div className="md:col-span-1">
+          <div className="flex flex-col gap-8 md:col-span-1">
             <Card>
               <CardHeader>
                 <CardTitle>Meu Perfil</CardTitle>
@@ -96,6 +133,33 @@ export default function ProfilePage() {
                 </Button>
               </CardContent>
             </Card>
+
+             <Card>
+                <CardHeader>
+                    <CardTitle>Convide e Ganhe</CardTitle>
+                    <CardDescription>
+                    Compartilhe seu link de convite e ganhe descontos!
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {isLoading ? (
+                    <Skeleton className="h-10 w-full" />
+                    ) : (
+                    <div className="flex items-center gap-2">
+                        <Input value={referralLink} readOnly />
+                        <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={handleCopyToClipboard}
+                        disabled={!referralLink}
+                        >
+                        <Copy className="h-4 w-4" />
+                        </Button>
+                    </div>
+                    )}
+                </CardContent>
+             </Card>
+
           </div>
           <div className="md:col-span-2">
             <OrderHistory orders={orders} isLoading={isLoading} />

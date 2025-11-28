@@ -1,29 +1,11 @@
 'use client';
 
-import { firebaseConfig } from '@/firebase/config';
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { Auth, getAuth } from 'firebase/auth';
-import { Firestore, getFirestore } from 'firebase/firestore'
+import { FirebaseApp } from 'firebase/app';
+import { Auth } from 'firebase/auth';
+import { Firestore } from 'firebase/firestore'
 
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION
-export function initializeFirebase() {
-  if (getApps().length) {
-    const app = getApp();
-    return getSdks(app);
-  }
-  
-  const app = initializeApp(firebaseConfig);
-  return getSdks(app);
-}
-
-export function getSdks(firebaseApp: FirebaseApp) {
-  return {
-    firebaseApp,
-    auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp)
-  };
-}
-
+// IMPORTANT: DO NOT EXPORT initializeFirebase from here anymore.
+// It is now handled within FirebaseClientProvider.
 
 export interface AuthProviderProps {
   children: React.ReactNode;

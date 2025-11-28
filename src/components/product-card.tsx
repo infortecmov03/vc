@@ -38,7 +38,7 @@ export function ProductCard({ product, onProductClick }: ProductCardProps) {
       </CardHeader>
       <CardContent className="flex-grow">
         <div className="flex items-center justify-between">
-          <p className="text-2xl font-bold text-primary">${product.price.toFixed(2)}</p>
+          <p className="text-2xl font-bold text-primary">MT{product.price.toFixed(2)}</p>
            <p className="text-sm text-muted-foreground">
             {product.stock > 0 ? `${product.stock} em estoque` : 'Fora de estoque'}
           </p>

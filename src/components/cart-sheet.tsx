@@ -51,7 +51,7 @@ export function CartSheet({ isOpen, onOpenChange }: CartSheetProps) {
                         Quantidade: {item.quantity}
                       </p>
                       <p className="font-medium">
-                        ${(item.price * item.quantity).toFixed(2)}
+                        MT{(item.price * item.quantity).toFixed(2)}
                       </p>
                     </div>
                     <Button
@@ -79,7 +79,7 @@ export function CartSheet({ isOpen, onOpenChange }: CartSheetProps) {
                 <div className="flex w-full flex-col gap-4">
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total</span>
-                    <span>${totalPrice.toFixed(2)}</span>
+                    <span>MT{totalPrice.toFixed(2)}</span>
                   </div>
                   <Button onClick={handleCheckout} className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
                     Finalizar Compra

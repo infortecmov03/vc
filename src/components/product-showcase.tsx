@@ -9,9 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { useSearchParams } from 'next/navigation';
 import { useFirebase } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
+import { collection, query, getDocs, writeBatch } from 'firebase/firestore';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { Skeleton } from './ui/skeleton';
+import { initialProducts } from '@/lib/products';
 
 export function ProductShowcase() {
   const searchParams = useSearchParams();
@@ -28,6 +29,29 @@ export function ProductShowcase() {
   }, [firestore]);
 
   const { data: allProducts, isLoading: areProductsLoading } = useCollection<Product>(productsQuery);
+  
+  // Seed database on initial load if it's empty
+  useEffect(() => {
+    const seedDatabase = async () => {
+      if (firestore && allProducts && allProducts.length === 0) {
+        console.log('Product collection is empty. Seeding database...');
+        const productsRef = collection(firestore, 'products');
+        const batch = writeBatch(firestore);
+        initialProducts.forEach((product) => {
+          const docRef = doc(productsRef, product.id);
+          batch.set(docRef, product);
+        });
+        await batch.commit();
+        // The useCollection hook will automatically update the UI with the new products.
+        console.log('Database seeded successfully!');
+      }
+    };
+
+    // We check areProductsLoading to ensure we have a definitive answer on whether products exist or not.
+    if (!areProductsLoading) {
+      seedDatabase();
+    }
+  }, [allProducts, areProductsLoading, firestore]);
   
   useEffect(() => {
     if (categoryParam) {
@@ -52,11 +76,12 @@ export function ProductShowcase() {
   const productsByCategory = useMemo(() => {
     if (!filteredProducts) return {};
     // For "Quadros Artisticos", show only one card that links to the family page.
-    const quadros = filteredProducts.find(p => p.category === 'Quadros Artisticos');
+    const quadros = filteredProducts.filter(p => p.category === 'Quadros Artisticos');
     const otherProducts = filteredProducts.filter(p => p.category !== 'Quadros Artisticos');
     
-    let displayProducts = otherProducts;
-    if (quadros && (category === 'all' || category === 'Quadros Artisticos')) {
+    let displayProducts: Product[] = otherProducts;
+
+    if (quadros.length > 0 && (category === 'all' || category === 'Quadros Artisticos')) {
        // We create a representative product for the card
         const representativeQuadro: Product = {
             id: '1',
@@ -65,14 +90,18 @@ export function ProductShowcase() {
             price: 1000, // Base price
             imageUrl: 'https://i.postimg.cc/ht51fqKK/2025-10-26-22-26-45.jpg',
             category: 'Quadros Artisticos',
-            stock: 5,
+            stock: quadros.reduce((sum, p) => sum + p.stock, 0), // Sum stock of all variations
             imageHint: 'quadro artistico',
         };
-        displayProducts = [representativeQuadro, ...otherProducts];
+        // Remove individual quadros if we are showing the representative one
+        displayProducts = [representativeQuadro, ...otherProducts.filter(p => !p.id.startsWith('1-'))];
     }
 
 
     return displayProducts.reduce((acc, product) => {
+        // Don't show individual quadro variations on the main page
+        if (product.id.startsWith('1-')) return acc;
+
         if (!acc[product.category]) {
             acc[product.category] = [];
         }
@@ -154,3 +183,5 @@ export function ProductShowcase() {
     </div>
   );
 }
+
+    

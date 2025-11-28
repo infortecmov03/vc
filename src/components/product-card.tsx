@@ -61,7 +61,9 @@ export function ProductCard({ product }: ProductCardProps) {
         </CardHeader>
         <CardContent className="flex-grow">
             <div className="flex items-center justify-between">
-            <p className="text-2xl font-bold text-primary">MT{product.price.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-primary">
+                {isVariationFamily ? `A partir de ` : ''}MT{product.price.toFixed(2)}
+            </p>
              {!isVariationFamily && (
                 <p className="text-sm text-muted-foreground">
                     {stock > 0 ? `${stock} em estoque` : 'Fora de estoque'}
@@ -85,3 +87,5 @@ export function ProductCard({ product }: ProductCardProps) {
     </Link>
   );
 }
+
+    

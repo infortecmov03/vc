@@ -194,19 +194,20 @@ service cloud.firestore {
     }
 
     /**
-     * @description Controls access to all chats.
+     * @description Controls access to messages in the anonymous chat.
+     * Any user can read and write to this specific public chat room.
+     */
+    match /chats/anonymous-chat/messages/{messageId} {
+      allow read: if true;
+      allow create: if request.resource.data.userId == 'anonymous'; // Only allows 'anonymous' user to write.
+    }
+    
+    /**
+     * @description Controls access to private chats between users and sellers.
      */
     match /chats/{chatId}/messages/{messageId} {
-      allow read, list: if isPrivateChatParticipant(chatId) || chatId == 'anonymous-chat';
-      
-      allow create: if (
-        isPrivateChatParticipant(chatId) &&
-        request.resource.data.senderType != 'ai' &&
-        isOwner(request.resource.data.userId)
-      ) || (
-        chatId == 'anonymous-chat' && request.resource.data.userId == 'anonymous'
-      );
-      
+      allow read, list: if isPrivateChatParticipant(chatId);
+      allow create: if isPrivateChatParticipant(chatId) && request.resource.data.senderType != 'ai' && isOwner(request.resource.data.userId);
       allow update, delete: if false;
     }
   }

@@ -9,10 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { useSearchParams } from 'next/navigation';
 import { useFirebase, useMemoFirebase } from '@/firebase';
-import { collection, query, getDocs, writeBatch, doc } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { Skeleton } from './ui/skeleton';
-import { initialProducts } from '@/lib/products';
 
 export function ProductShowcase() {
   const searchParams = useSearchParams();
@@ -29,24 +28,6 @@ export function ProductShowcase() {
   }, [firestore]);
 
   const { data: allProducts, isLoading: areProductsLoading, error } = useCollection<Product>(productsCollectionRef);
-
-  useEffect(() => {
-    // Seed the database if it's empty
-    const seedDatabase = async () => {
-      if (firestore && allProducts !== null && allProducts.length === 0) {
-        console.log("Product collection is empty. Seeding database...");
-        const batch = writeBatch(firestore);
-        initialProducts.forEach((product) => {
-          const docRef = doc(firestore, "products", product.id);
-          batch.set(docRef, product);
-        });
-        await batch.commit();
-        console.log("Database seeded successfully.");
-        // Note: The useCollection hook will automatically update the `allProducts` state.
-      }
-    };
-    seedDatabase();
-  }, [allProducts, firestore]);
   
   useEffect(() => {
     if (categoryParam) {
@@ -171,7 +152,10 @@ export function ProductShowcase() {
                     </section>
                 ))
             ) : (
-                <p className="text-center text-muted-foreground">Nenhum produto encontrado. Adicione produtos no console do Firebase.</p>
+                <div className="text-center py-10 text-muted-foreground">
+                  <p>Nenhum produto encontrado.</p>
+                  <p className="text-sm">Por favor, adicione produtos no Console do Firebase para vê-los aqui.</p>
+                </div>
             )}
         </div>
       </div>

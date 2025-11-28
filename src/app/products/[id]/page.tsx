@@ -12,7 +12,7 @@ import { ShoppingCart } from 'lucide-react';
 import { Recommendations } from '@/components/recommendations';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { useFirebase } from '@/firebase';
+import { useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -26,7 +26,7 @@ export default function ProductDetailPage() {
 
   const { firestore } = useFirebase();
 
-  const productsQuery = useMemo(() => {
+  const productsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'products'));
   }, [firestore]);
@@ -172,6 +172,7 @@ export default function ProductDetailPage() {
                 className="rounded-lg object-cover"
                 sizes="(max-width: 768px) 100vw, 50vw"
                 data-ai-hint={selectedVariant?.imageHint || baseProduct.imageHint}
+                priority
               />
             </div>
             <div className="space-y-6">

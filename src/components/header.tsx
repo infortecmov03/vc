@@ -7,7 +7,7 @@ import { CartSheet } from '@/components/cart-sheet';
 import { useState, useMemo } from 'react';
 import { useCart } from '@/contexts/cart-context';
 import { SearchDialog } from './search-dialog';
-import { useUser, useFirebase } from '@/firebase';
+import { useUser, useFirebase, useMemoFirebase } from '@/firebase';
 import Link from 'next/link';
 import {
   DropdownMenu,
@@ -31,7 +31,7 @@ export function Header() {
   const { user, isUserLoading } = useUser();
   const { firestore } = useFirebase();
 
-  const productsQuery = useMemo(() => {
+  const productsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return collection(firestore, 'products');
   }, [firestore]);

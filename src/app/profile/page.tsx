@@ -3,7 +3,7 @@
 import { useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { doc, Timestamp, collection, query, where, getDoc } from 'firebase/firestore';
+import { doc, Timestamp, collection, query, where, getDoc, updateDoc } from 'firebase/firestore';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { Header } from '@/components/header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,9 +15,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { OrderHistory } from '@/components/order-history';
 import { Order } from '@/lib/types';
 import { Input } from '@/components/ui/input';
-import { Copy, Gift } from 'lucide-react';
+import { Copy, Gift, Loader2, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getAuth } from 'firebase/auth';
+import { Label } from '@/components/ui/label';
 
 
 interface UserProfile {
@@ -28,6 +29,8 @@ interface UserProfile {
   referralCode?: string;
   referralCount?: number;
   availableDiscount?: number;
+  locationLatitude?: number;
+  locationLongitude?: number;
 }
 
 export default function ProfilePage() {
@@ -38,6 +41,11 @@ export default function ProfilePage() {
   const [accountAge, setAccountAge] = useState('');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
+
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
+  const [isSavingLocation, setIsSavingLocation] = useState(false);
+
 
   // Redirect if not logged in
   useEffect(() => {
@@ -64,7 +72,10 @@ export default function ProfilePage() {
             setIsProfileLoading(true);
             const docSnap = await getDoc(userRef);
             if (docSnap.exists()) {
-                setUserProfile(docSnap.data() as UserProfile);
+                const profileData = docSnap.data() as UserProfile;
+                setUserProfile(profileData);
+                setLatitude(String(profileData.locationLatitude || ''));
+                setLongitude(String(profileData.locationLongitude || ''));
             }
             setIsProfileLoading(false);
         }
@@ -94,6 +105,41 @@ export default function ProfilePage() {
     });
   };
 
+  const handleSaveLocation = async () => {
+    if (!userRef) return;
+    setIsSavingLocation(true);
+    try {
+        const lat = parseFloat(latitude);
+        const lon = parseFloat(longitude);
+        if (isNaN(lat) || isNaN(lon)) {
+            toast({
+                variant: 'destructive',
+                title: 'Localização Inválida',
+                description: 'Por favor, insira valores numéricos para latitude e longitude.',
+            });
+            return;
+        }
+
+        await updateDoc(userRef, {
+            locationLatitude: lat,
+            locationLongitude: lon,
+        });
+
+        toast({
+            title: 'Localização salva!',
+            description: 'Seu endereço foi atualizado com sucesso.',
+        });
+    } catch (error) {
+         toast({
+            variant: 'destructive',
+            title: 'Erro ao salvar',
+            description: 'Não foi possível salvar sua localização. Tente novamente.',
+        });
+    } finally {
+        setIsSavingLocation(false);
+    }
+  };
+
   const handleLogout = async () => {
     const auth = getAuth();
     await signOut(auth);
@@ -111,7 +157,7 @@ export default function ProfilePage() {
             <Card>
               <CardHeader>
                 <CardTitle>Meu Perfil</CardTitle>
-                <CardDescription>Gerencie as informações da sua conta.</CardDescription>
+                <CardDescription>Gerencie as informações da sua conta e localização.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
@@ -130,6 +176,24 @@ export default function ProfilePage() {
                   <h3 className="font-semibold">Total de Compras</h3>
                   {isLoading ? <Skeleton className="h-5 w-12" /> : <p>{orders?.length ?? 0}</p>}
                 </div>
+                
+                <div className="space-y-4 rounded-lg border bg-background p-4">
+                    <h3 className='font-semibold'>Minha Localização para Entrega</h3>
+                    <div className="grid gap-2">
+                        <Label htmlFor='latitude'>Latitude</Label>
+                        <Input id='latitude' placeholder='Ex: -25.9653' value={latitude} onChange={(e) => setLatitude(e.target.value)} disabled={isLoading || isSavingLocation}/>
+                    </div>
+                     <div className="grid gap-2">
+                        <Label htmlFor='longitude'>Longitude</Label>
+                        <Input id='longitude' placeholder='Ex: 32.5892' value={longitude} onChange={(e) => setLongitude(e.target.value)} disabled={isLoading || isSavingLocation}/>
+                    </div>
+                    <Button onClick={handleSaveLocation} disabled={isLoading || isSavingLocation} className='w-full'>
+                        {isSavingLocation ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        {isSavingLocation ? 'Salvando...' : 'Salvar Localização'}
+                    </Button>
+                </div>
+
+
                 <Button variant="destructive" onClick={handleLogout}>
                   Sair
                 </Button>
@@ -182,5 +246,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    

@@ -15,7 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { OrderHistory } from '@/components/order-history';
 import { Order } from '@/lib/types';
 import { Input } from '@/components/ui/input';
-import { Copy } from 'lucide-react';
+import { Copy, Gift } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getAuth } from 'firebase/auth';
 
@@ -26,6 +26,8 @@ interface UserProfile {
   email: string;
   createdAt: Timestamp;
   referralCode?: string;
+  referralCount?: number;
+  availableDiscount?: number;
 }
 
 export default function ProfilePage() {
@@ -138,25 +140,36 @@ export default function ProfilePage() {
                 <CardHeader>
                     <CardTitle>Convide e Ganhe</CardTitle>
                     <CardDescription>
-                    Compartilhe seu link de convite e ganhe descontos!
+                    Compartilhe seu link e ganhe **MT100 de desconto** para cada amigo que se cadastrar!
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
-                    {isLoading ? (
-                    <Skeleton className="h-10 w-full" />
+                <CardContent className="space-y-4">
+                     {isLoading ? (
+                      <Skeleton className="h-10 w-full" />
                     ) : (
-                    <div className="flex items-center gap-2">
-                        <Input value={referralLink} readOnly />
-                        <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={handleCopyToClipboard}
-                        disabled={!referralLink}
-                        >
-                        <Copy className="h-4 w-4" />
-                        </Button>
-                    </div>
+                      <div className="flex items-center gap-2">
+                          <Input value={referralLink} readOnly />
+                          <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={handleCopyToClipboard}
+                          disabled={!referralLink}
+                          >
+                          <Copy className="h-4 w-4" />
+                          </Button>
+                      </div>
                     )}
+                    <div className="flex items-center justify-between rounded-lg border bg-background p-4">
+                        <div className="flex items-center gap-3">
+                            <Gift className="h-6 w-6 text-primary" />
+                            <div>
+                                <p className="text-sm font-medium">Seu Saldo</p>
+                                <p className="text-xs text-muted-foreground">{userProfile?.referralCount ?? 0} convites bem-sucedidos</p>
+                            </div>
+                        </div>
+                        {isLoading ? <Skeleton className="h-6 w-24" /> : 
+                        <p className="text-xl font-bold text-primary">MT{(userProfile?.availableDiscount ?? 0).toFixed(2)}</p>}
+                    </div>
                 </CardContent>
              </Card>
 
@@ -169,3 +182,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    

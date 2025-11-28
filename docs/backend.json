@@ -85,6 +85,14 @@
         "referredBy": {
           "type": "string",
           "description": "The ID of the user who referred this user."
+        },
+        "referralCount": {
+          "type": "number",
+          "description": "The number of users this user has successfully referred."
+        },
+        "availableDiscount": {
+          "type": "number",
+          "description": "The amount of discount credit this user has available."
         }
       },
       "required": [
@@ -459,3 +467,5 @@
     "reasoning": "This Firestore structure prioritizes authorization independence and supports the application's requirements for product listings, order management, AI recommendations, and chat functionality. The structure incorporates denormalization to avoid complex security rules and ensures that list operations are secure. Specifically, the delivery rate and seller location are separate to allow easy updates without affecting other documents. The chat messages between users and sellers, facilitated by AI, are structured to ensure secure communication and order tracking, and to enable the notification feature requested. The structure also enables calculating delivery rates based on distance between the buyer and seller, supporting the variable delivery fee requested.\n\n**Authorization Independence:**\n\n*   Order documents include `userId` and `sellerId` for direct authorization checks, avoiding the need to fetch user or seller data during rule evaluation.\n*   ChatMessage documents include `userId` and `sellerId` to authorize access based on the participants.\n*   DeliveryRate documents include `sellerId` to authorize modification only by the seller.\n\n**QAPs Support:**\n\n*   **Product Listings:** Stored in a top-level `/products` collection, allowing for efficient listing and display. Security rules ensure only approved products are visible.\n*   **Order Management:** Orders are stored in `/orders` collection, associated with the user and seller. Security rules ensure that users can only access their own orders and sellers can only access orders related to their products.\n*   **Chat Functionality:** Chat messages are stored in `/chats/{chatId}/messages` collection, with security rules to ensure only participating users and sellers can read and write messages. The `chatId` is generated based on a combination of the `userId` and `sellerId` to keep the conversation isolated for authorized members only.\n*   **Delivery Rate:** Delivery rates are stored in `/sellers/{sellerId}/deliveryRates` subcollection, allowing sellers to manage their own delivery rates and enable secure listing and update operations.\n\n**Denormalization:**\n\n*   `Order` documents denormalize `sellerId` to streamline security rules and avoid `get()` calls to seller documents."
   }
 }
+
+    

@@ -13,7 +13,7 @@ import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { doc, setDoc, serverTimestamp, getDocs, collection, query, where } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDocs, collection, query, where, updateDoc, increment } from 'firebase/firestore';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'O nome deve ter pelo menos 2 caracteres.' }),
@@ -78,6 +78,19 @@ export default function SignupPage() {
             // Anti-fraud: check if the new user's email is the same as the referrer's
             if (referrerDoc.id !== user.uid) {
                referredBy = referrerDoc.id;
+
+               // Grant discount to the referrer
+               const referrerRef = doc(firestore, 'users', referredBy);
+               await updateDoc(referrerRef, {
+                    referralCount: increment(1),
+                    availableDiscount: increment(100) // Grant 100 MT discount
+               });
+
+               toast({
+                   title: "Convite bem-sucedido!",
+                   description: "Quem te convidou acaba de ganhar um desconto de 100 MT!",
+               });
+
             } else {
                 toast({
                     variant: "destructive",
@@ -97,6 +110,8 @@ export default function SignupPage() {
         createdAt: serverTimestamp(),
         referralCode: generateReferralCode(),
         referredBy: referredBy,
+        referralCount: 0,
+        availableDiscount: 0,
       });
 
       toast({
@@ -183,3 +198,5 @@ export default function SignupPage() {
     </div>
   );
 }
+
+    

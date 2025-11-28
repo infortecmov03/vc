@@ -3,6 +3,7 @@ import './globals.css';
 import { CartProvider } from '@/contexts/cart-context';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase';
+import { ChatWidget } from '@/components/chat-widget';
 
 export const metadata: Metadata = {
   title: 'Bazar Moçambique AI',
@@ -25,6 +26,7 @@ export default function RootLayout({
         <FirebaseClientProvider>
           <CartProvider>
             {children}
+            <ChatWidget />
             <Toaster />
           </CartProvider>
         </FirebaseClientProvider>

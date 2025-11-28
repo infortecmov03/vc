@@ -1,8 +1,9 @@
 'use client';
 
-import { FirebaseApp } from 'firebase/app';
-import { Auth } from 'firebase/auth';
-import { Firestore } from 'firebase/firestore'
+import { FirebaseApp, initializeApp, getApps, getApp } from 'firebase/app';
+import { Auth, getAuth } from 'firebase/auth';
+import { Firestore, getFirestore } from 'firebase/firestore'
+import { firebaseConfig } from './config';
 
 // IMPORTANT: DO NOT EXPORT initializeFirebase from here anymore.
 // It is now handled within FirebaseClientProvider.
@@ -23,3 +24,4 @@ export * from './non-blocking-updates';
 export * from './non-blocking-login';
 export * from './errors';
 export * from './error-emitter';
+

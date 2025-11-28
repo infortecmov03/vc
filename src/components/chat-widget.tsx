@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, limit } from 'firebase/firestore';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { chat, ChatInput } from '@/ai/flows/chat-flow';
@@ -25,9 +25,8 @@ export function ChatWidget() {
   const [message, setMessage] = useState('');
   const [isAiThinking, startAiTransition] = useTransition();
 
-  const { user } = useUser();
-  const firestore = useFirestore();
-
+  const { user, firestore, areServicesAvailable } = useFirebase();
+  
   const chatId = useMemo(() => {
     if (!user) return 'anonymous-chat';
     // In a multi-seller marketplace, this would be `userId_sellerId`
@@ -113,6 +112,11 @@ export function ChatWidget() {
     });
 
   };
+  
+  if (!areServicesAvailable) {
+    return null; // Don't render the chat widget if Firebase isn't ready
+  }
+
 
   return (
     <>

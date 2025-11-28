@@ -13,9 +13,11 @@ import { useFirebase } from '@/firebase';
 import { collection, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { serverTimestamp } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
-import { Gift, Loader2 } from 'lucide-react';
+import { useEffect, useState, useTransition } from 'react';
+import { Gift, Loader2, Truck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { calculateDeliveryFee } from '@/ai/flows/delivery-fee-flow';
+import { Separator } from './ui/separator';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -35,32 +37,48 @@ export function CheckoutModal({ isOpen, onOpenChange }: CheckoutModalProps) {
   const { toast } = useToast();
   
   const [availableDiscount, setAvailableDiscount] = useState(0);
+  const [deliveryFee, setDeliveryFee] = useState<number | null>(null);
   const [isDiscountApplied, setIsDiscountApplied] = useState(false);
-  const [isLoadingDiscount, setIsLoadingDiscount] = useState(false);
   
+  const [isCalculatingFee, startFeeCalculation] = useTransition();
+
   const discountToApply = Math.min(availableDiscount, totalPrice);
-  const finalPrice = isDiscountApplied ? totalPrice - discountToApply : totalPrice;
+  const subtotal = totalPrice;
+  const finalPrice = (isDiscountApplied ? subtotal - discountToApply : subtotal) + (deliveryFee || 0);
 
 
   useEffect(() => {
-    async function fetchUserDiscount() {
+    async function fetchUserData() {
       if (firestore && user && isOpen) {
-        setIsLoadingDiscount(true);
         const userRef = doc(firestore, 'users', user.uid);
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
-          setAvailableDiscount(userSnap.data()?.availableDiscount || 0);
+          const userData = userSnap.data();
+          setAvailableDiscount(userData?.availableDiscount || 0);
+
+          if(userData?.locationLatitude && userData?.locationLongitude) {
+            startFeeCalculation(async () => {
+              const feeResponse = await calculateDeliveryFee({
+                userLatitude: userData.locationLatitude,
+                userLongitude: userData.locationLongitude,
+                sellerId: 'default-seller', // Placeholder
+              });
+              setDeliveryFee(feeResponse.deliveryFee);
+            });
+          } else {
+            setDeliveryFee(0); // No location, no fee
+          }
         }
-        setIsLoadingDiscount(false);
       }
     }
-    fetchUserDiscount();
+    fetchUserData();
   }, [firestore, user, isOpen]);
 
   useEffect(() => {
-    // Reset discount when modal closes
+    // Reset state when modal closes
     if (!isOpen) {
       setIsDiscountApplied(false);
+      setDeliveryFee(null);
     }
   }, [isOpen]);
 
@@ -87,6 +105,7 @@ export function CheckoutModal({ isOpen, onOpenChange }: CheckoutModalProps) {
       })),
       sellerId: 'default-seller', // Placeholder until multi-seller logic is implemented
       discountApplied: isDiscountApplied ? discountToApply : 0,
+      deliveryFee: deliveryFee || 0,
     };
     
     if (firestore) {
@@ -109,8 +128,13 @@ export function CheckoutModal({ isOpen, onOpenChange }: CheckoutModalProps) {
     router.push('/confirmation');
   }
 
+  const handleOpenChange = (open: boolean) => {
+    if (isCalculatingFee) return; // Prevent closing while calculating
+    onOpenChange(open);
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Finalizar Compra</DialogTitle>
@@ -151,7 +175,7 @@ export function CheckoutModal({ isOpen, onOpenChange }: CheckoutModalProps) {
               name="address"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Endereço</FormLabel>
+                  <FormLabel>Endereço de Entrega</FormLabel>
                   <FormControl>
                     <Input placeholder="Sua rua, número, cidade" {...field} />
                   </FormControl>
@@ -160,24 +184,19 @@ export function CheckoutModal({ isOpen, onOpenChange }: CheckoutModalProps) {
               )}
             />
 
-            {isLoadingDiscount && (
-                <div className="flex items-center justify-center p-4">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                </div>
-            )}
             
-            {!isLoadingDiscount && availableDiscount > 0 && (
+            {availableDiscount > 0 && (
               <div className="space-y-2">
-                <div className="flex items-center justify-between rounded-lg border bg-green-50 p-4 dark:bg-green-900/20">
+                <div className="flex items-center justify-between rounded-lg border bg-green-50 p-3 dark:bg-green-900/20">
                   <div className="flex items-center gap-3">
                     <Gift className="h-5 w-5 text-green-600" />
                     <div>
-                      <p className="font-semibold text-green-800 dark:text-green-300">
+                      <p className="font-semibold text-sm text-green-800 dark:text-green-300">
                         Você tem MT{availableDiscount.toFixed(2)} de desconto!
                       </p>
                       {isDiscountApplied && (
                         <p className="text-xs text-green-600 dark:text-green-400">
-                          -MT{discountToApply.toFixed(2)} aplicados a esta compra.
+                          -MT{discountToApply.toFixed(2)} aplicados.
                         </p>
                       )}
                     </div>
@@ -193,16 +212,49 @@ export function CheckoutModal({ isOpen, onOpenChange }: CheckoutModalProps) {
                 </div>
               </div>
             )}
+            
+            <Separator />
+
+            <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                    <span className='text-muted-foreground'>Subtotal</span>
+                    <span>MT{subtotal.toFixed(2)}</span>
+                </div>
+                 {isDiscountApplied && (
+                    <div className="flex justify-between text-green-600">
+                        <span className='text-muted-foreground'>Desconto</span>
+                        <span>-MT{discountToApply.toFixed(2)}</span>
+                    </div>
+                 )}
+                <div className="flex justify-between">
+                    <span className='text-muted-foreground'>Taxa de Entrega</span>
+                     {isCalculatingFee ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                     ) : (
+                        <span>MT{(deliveryFee ?? 0).toFixed(2)}</span>
+                     )}
+                </div>
+                {deliveryFee === 0 && !isCalculatingFee && (
+                    <p className="text-xs text-muted-foreground text-center pt-1">
+                        A taxa de entrega é calculada com base na sua localização.
+                        <Button variant="link" size="sm" className="p-1 h-auto" onClick={() => router.push('/profile')}>
+                            Adicionar localização no seu perfil.
+                        </Button>
+                    </p>
+                )}
+            </div>
+
+            <Separator />
 
 
-            <div className="flex justify-between items-center text-lg font-bold border-t pt-4">
+            <div className="flex justify-between items-center text-lg font-bold pt-2">
                 <span>Total a Pagar:</span>
                 <span>MT{finalPrice.toFixed(2)}</span>
             </div>
 
             <DialogFooter>
-              <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
-                Confirmar Pedido
+              <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isCalculatingFee}>
+                {isCalculatingFee ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Calculando taxas...</> : 'Confirmar Pedido'}
               </Button>
             </DialogFooter>
           </form>
@@ -211,5 +263,3 @@ export function CheckoutModal({ isOpen, onOpenChange }: CheckoutModalProps) {
     </Dialog>
   );
 }
-
-    

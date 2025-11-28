@@ -39,4 +39,6 @@ export type Order = {
   totalAmount: number;
   items: OrderItem[];
   sellerId: string;
+  deliveryFee: number;
+  discountApplied: number;
 };

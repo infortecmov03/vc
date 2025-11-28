@@ -192,27 +192,32 @@ service cloud.firestore {
       // Writes are disallowed from the client; these are part of the initial order creation transaction.
       allow create, update, delete: if false;
     }
-
+    
     /**
-     * @description Public chat for anonymous users. Anyone can read and write.
-     * @path /chats/anonymous-chat/messages/{messageId}
-     */
-    match /chats/anonymous-chat/messages/{messageId} {
-      allow read, create: if true;
-      // Updates and deletes are disallowed for message history integrity.
-      allow update, delete: if false;
-    }
-
-    /**
-     * @description Controls access to private chat messages. Access is restricted to chat participants.
-     * @path /chats/{chatId}/messages/{messageId}
+     * @description Controls access to all chat collections.
+     * This block handles both anonymous and private chats with specific rules.
      */
     match /chats/{chatId}/messages/{messageId} {
-      allow get, list: if isChatParticipant(chatId);
-      allow create: if isChatParticipant(chatId) &&
-                        request.resource.data.senderType != 'ai' && // Clients cannot send messages as the AI.
-                        ((request.resource.data.senderType == 'user' && isOwner(request.resource.data.userId)) ||
-                         (request.resource.data.senderType == 'seller' && isSeller(request.resource.data.sellerId)));
+      // Rule for listing messages:
+      // Allow if the chat is the public anonymous chat OR if the user is a participant of a private chat.
+      allow list: if chatId == 'anonymous-chat' || isChatParticipant(chatId);
+
+      // Rule for reading a single message:
+      // Allow if the chat is the public anonymous chat OR if the user is a participant of a private chat.
+      allow get: if chatId == 'anonymous-chat' || isChatParticipant(chatId);
+      
+      // Rule for creating messages:
+      allow create: if (
+        // Case 1: Anonymous user posting to the anonymous chat.
+        chatId == 'anonymous-chat' && request.auth == null
+      ) || (
+        // Case 2: Authenticated user posting to a private chat they are part of.
+        isChatParticipant(chatId) &&
+        request.resource.data.senderType != 'ai' &&
+        ((request.resource.data.senderType == 'user' && isOwner(request.resource.data.userId)) ||
+         (request.resource.data.senderType == 'seller' && isSeller(request.resource.data.sellerId)))
+      );
+
       // Updates and deletes are disallowed for message history integrity.
       allow update, delete: if false;
     }

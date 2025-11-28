@@ -10,16 +10,8 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { ProductSchema } from './product-schemas';
 
-const ProductSchema = z.object({
-  id: z.string().describe('The unique identifier of the product.'),
-  name: z.string().describe('The name of the product.'),
-  description: z.string().describe('A brief description of the product.'),
-  price: z.number().describe('The price of the product.'),
-  imageUrl: z.string().describe('URL of the product image.'),
-  category: z.string().describe('Category of the product (e.g., Quadros Artisticos, Smart Tag Rastreador).'),
-  stock: z.number().describe('The number of items currently in stock.'),
-});
 
 const RecommendProductsInputSchema = z.object({
   userPreferences: z
@@ -44,7 +36,7 @@ const getAvailableProducts = ai.defineTool({
 }, async (input) => {
   // TODO: Replace with actual implementation to fetch products from the database.
   // This is dummy data for demonstration purposes.
-  const products: ProductSchema[] = [
+  const products: z.infer<typeof ProductSchema>[] = [
     {
       id: '1',
       name: 'Abstract Art Canvas',
@@ -105,5 +97,3 @@ const recommendProductsFlow = ai.defineFlow(
 export async function recommendProducts(input: RecommendProductsInput): Promise<RecommendProductsOutput> {
   return recommendProductsFlow(input);
 }
-
-export type {ProductSchema};

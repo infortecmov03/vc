@@ -10,7 +10,7 @@ import type { Product } from '@/lib/types';
 import { recommendProducts } from '@/ai/flows/product-recommendations';
 import { useToast } from '@/hooks/use-toast';
 import { products as allProductsStore } from '@/lib/products';
-import type { ProductSchema } from '@/ai/flows/product-recommendations';
+import { ProductSchema } from '@/ai/flows/product-schemas';
 
 export function Recommendations() {
   const [recommendations, setRecommendations] = useState<Product[]>([]);
@@ -36,7 +36,7 @@ export function Recommendations() {
       setRecommendations([]);
   
       try {
-        const result: ProductSchema[] = await recommendProducts({
+        const result: (typeof ProductSchema)[] = await recommendProducts({
           userPreferences: 'Gosto de arte moderna e gadgets úteis. Prefiro produtos com boas avaliações e preços moderados.',
           browsingHistory: browsingHistory.map(p => ({
               id: p.id,

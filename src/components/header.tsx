@@ -1,12 +1,12 @@
 'use client';
 
-import { Menu, Search, ShoppingBag } from 'lucide-react';
+import { Menu, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { CartSheet } from '@/components/cart-sheet';
 import { useState } from 'react';
 import { useCart } from '@/contexts/cart-context';
+import { SearchDialog } from './search-dialog';
 
 export function Header() {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -20,10 +20,7 @@ export function Header() {
             Bazar Moçambique AI
           </a>
           <div className="hidden flex-1 md:flex justify-center">
-            <div className="relative w-full max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input placeholder="Pesquisar produtos..." className="pl-10" />
-            </div>
+             <SearchDialog />
           </div>
           <div className="hidden md:flex items-center gap-2">
             <div className="relative">
@@ -38,7 +35,8 @@ export function Header() {
               )}
             </div>
           </div>
-          <div className="md:hidden">
+          <div className="flex items-center gap-2 md:hidden">
+            <SearchDialog />
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -48,10 +46,6 @@ export function Header() {
               </SheetTrigger>
               <SheetContent>
                 <div className="flex flex-col gap-4 py-6">
-                    <div className="relative w-full">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Input placeholder="Pesquisar produtos..." className="pl-10" />
-                    </div>
                     <Button variant="ghost" className="justify-start gap-2" onClick={() => {
                         const menuTrigger = document.querySelector('[aria-controls="radix-:R1mlaq:"]');
                         if (menuTrigger instanceof HTMLElement) {

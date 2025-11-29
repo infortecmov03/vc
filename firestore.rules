@@ -195,36 +195,40 @@ service cloud.firestore {
     }
 
     /**
-     * @description Controls access to chat rooms.
-     * By default, listing all chat rooms is denied. Access to subcollections is defined below.
+     * @description Controls access to chat rooms and their messages.
+     * By default, nobody can read or write directly to a chat document itself.
+     * Access is defined for the 'messages' subcollection below.
      */
     match /chats/{chatId} {
-      allow read, write: if false;
+      allow read, write: if false; // Deny access to the chat room document itself.
 
       /**
-       * @description Controls access to the public anonymous chat room.
-       * Allows anyone to read and create messages.
+       * @description Controls access to individual messages.
+       * - Allows anyone to create/read in the anonymous chat.
+       * - Restricts private chats to participants.
        */
       match /messages/{messageId} {
-        // This rule specifically targets the anonymous chat by checking the parent document ID.
-        allow get, create: if parent.id == 'anonymous-chat';
-        allow list: if false; // List is handled by the collection-level rule below.
-        allow update, delete: if false;
+        allow get: if chatId == 'anonymous-chat' || isPrivateChatParticipant(chatId);
         
-        // This rule handles private chats.
-        allow get: if isPrivateChatParticipant(chatId);
-        allow create: if isPrivateChatParticipant(chatId) && request.resource.data.senderType != 'ai' && isOwner(request.resource.data.userId);
+        // Rules for creating messages
+        allow create: if (chatId == 'anonymous-chat' && request.resource.data.senderType != 'ai') || 
+                         (isPrivateChatParticipant(chatId) && request.resource.data.senderType != 'ai' && isOwner(request.resource.data.userId));
+        
+        // Disallow updates and deletes from the client for message integrity.
+        allow update, delete: if false;
       }
-      
+
       /**
-       * @description Explicitly allows LISTING messages in the anonymous chat.
-       * This is the key rule that fixes the "Missing or insufficient permissions" error for anonymous users.
+       * @description Controls LISTING of messages.
+       * This is the key rule that was causing permission errors.
+       * It explicitly allows the 'list' operation for the anonymous chat
+       * and for participants of private chats.
        */
       match /messages {
-        allow list: if parent.id == 'anonymous-chat' || isPrivateChatParticipant(chatId);
+        allow list: if chatId == 'anonymous-chat' || isPrivateChatParticipant(chatId);
+        // Deny all other operations at the collection level.
+        allow get, create, update, delete: if false;
       }
     }
   }
 }
-
-    

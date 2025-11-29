@@ -84,7 +84,9 @@ service cloud.firestore {
      */
     function isPrivateChatParticipant(chatId) {
       let parts = chatId.split('_');
-      return isSignedIn() && (request.auth.uid == parts[0] || request.auth.uid == parts[1]);
+      // A valid private chat ID must have at least two parts (user and seller).
+      // The anonymous chat only has one part after splitting by '_', so it will correctly fail.
+      return isSignedIn() && parts.length >= 2 && (request.auth.uid == parts[0] || request.auth.uid == parts[1]);
     }
 
     // -------------------------------------------------------------------------
@@ -148,11 +150,11 @@ service cloud.firestore {
     }
     
     /**
-     * @description Controls access to product documents. Products are public, but managed by admins.
+     * @description Controls access to product documents. Products are public.
      * @path /products/{productId}
      * @allow (list) Any user, signed in or not, can list and browse all products.
      * @deny (delete) A non-admin user attempting to delete a product.
-     * @principle Implements a public-read, admin-write model using custom claims.
+     * @principle Implements a public-read, admin-write model.
      */
     match /products/{productId} {
       allow get, list: if true;
@@ -193,21 +195,36 @@ service cloud.firestore {
     }
 
     /**
-     * @description Controls access to the public anonymous chat room.
-     * Allows anyone to read and create messages.
+     * @description Controls access to chat rooms.
+     * By default, listing all chat rooms is denied. Access to subcollections is defined below.
      */
-    match /chats/anonymous-chat/messages/{messageId} {
-      allow get, list, create: if true; 
-      allow update, delete: if false;
-    }
-    
-    /**
-     * @description Controls access to private chats between authenticated users and sellers.
-     */
-    match /chats/{chatId}/messages/{messageId} {
-      allow get, list: if isPrivateChatParticipant(chatId);
-      allow create: if isPrivateChatParticipant(chatId) && request.resource.data.senderType != 'ai' && isOwner(request.resource.data.userId);
-      allow update, delete: if false;
+    match /chats/{chatId} {
+      allow read, write: if false;
+
+      /**
+       * @description Controls access to the public anonymous chat room.
+       * Allows anyone to read and create messages.
+       */
+      match /messages/{messageId} {
+        // This rule specifically targets the anonymous chat by checking the parent document ID.
+        allow get, create: if parent.id == 'anonymous-chat';
+        allow list: if false; // List is handled by the collection-level rule below.
+        allow update, delete: if false;
+        
+        // This rule handles private chats.
+        allow get: if isPrivateChatParticipant(chatId);
+        allow create: if isPrivateChatParticipant(chatId) && request.resource.data.senderType != 'ai' && isOwner(request.resource.data.userId);
+      }
+      
+      /**
+       * @description Explicitly allows LISTING messages in the anonymous chat.
+       * This is the key rule that fixes the "Missing or insufficient permissions" error for anonymous users.
+       */
+      match /messages {
+        allow list: if parent.id == 'anonymous-chat' || isPrivateChatParticipant(chatId);
+      }
     }
   }
 }
+
+    
